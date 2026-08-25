@@ -1,0 +1,221 @@
+<!--
+  ============================================================================
+  Get your Dexcom history in one click  —  student handout page
+
+  WHAT THIS IS
+  A single self-contained page. A student opens it, drags the button onto their
+  bookmarks bar, and clicks it while logged in to Dexcom Clarity. Nothing to
+  install: no Node, no terminal, no extension. This one file is the whole tool.
+
+  WHY IT EXISTS
+  Clarity only exports 90 days at a time. The bookmark asks for one 90-day
+  stretch after another, walking backward until the record runs out, then saves
+  the lot as a single CSV in the student's Downloads folder.
+
+  THE BUTTON'S href IS GENERATED CODE — DO NOT HAND-EDIT IT
+  That enormous javascript: line further down is the whole tool, percent-encoded
+  onto one line because that is the only shape a bookmark can take. The readable
+  original lives in  src/get-history.js  . Edit THAT, then re-encode it into the
+  href here. Editing the encoded line directly will break it silently.
+
+  EVERYTHING ELSE ON THIS PAGE IS ORDINARY HTML — edit it freely.
+
+  PRIVACY
+  The bookmark runs inside the student's own browser, on the Clarity session
+  they are already signed in to. It sends nothing to any third party and writes
+  nothing online. The file is theirs and stays on their machine.
+  ============================================================================
+-->
+
+<title>Clarity History Grab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<!-- ── Look and feel. Colours are defined once as variables, then re-defined
+     for dark mode, so the page reads correctly in either. ── -->
+<style>
+  :root {
+    --ground:#F7F9FA; --surface:#FFFFFF; --ink:#0E1417; --muted:#5C6B75;
+    --rule:#DCE3E8; --accent:#0B6E62; --accent-soft:#E4F1EE;
+    --caution:#7A5200; --caution-soft:#FBF2DE; --chip:#0E1417; --chip-ink:#FFFFFF;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+    --serif:"Source Serif 4",Georgia,serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0C1013; --surface:#141A1F; --ink:#E7EDF1; --muted:#93A3AE;
+      --rule:#232C33; --accent:#46C4B2; --accent-soft:#14262A;
+      --caution:#D9A441; --caution-soft:#241E10; --chip:#E7EDF1; --chip-ink:#0C1013;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0C1013; --surface:#141A1F; --ink:#E7EDF1; --muted:#93A3AE;
+    --rule:#232C33; --accent:#46C4B2; --accent-soft:#14262A;
+    --caution:#D9A441; --caution-soft:#241E10; --chip:#E7EDF1; --chip-ink:#0C1013;
+  }
+
+  body {
+    background:var(--ground); color:var(--ink);
+    font-family:var(--serif); font-size:17px; line-height:1.65;
+    margin:0; padding:56px 24px 96px;
+  }
+  .page { max-width:660px; margin:0 auto; display:flex; flex-direction:column; gap:38px; }
+
+  /* Keeps a name like macOS from being flattened by the uppercase styling. */
+  .asis { text-transform:none; }
+
+  .eyebrow {
+    font-family:var(--sans); font-size:11.5px; font-weight:600;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 10px;
+  }
+  h1 {
+    font-family:var(--sans); font-weight:600; font-size:34px; line-height:1.15;
+    letter-spacing:-.018em; margin:0 0 14px; text-wrap:balance;
+  }
+  .lede { margin:0; color:var(--muted); font-size:18px; }
+
+  h2 {
+    font-family:var(--sans); font-size:12px; font-weight:600; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 18px;
+    padding-bottom:9px; border-bottom:1px solid var(--rule);
+  }
+  p { margin:0 0 14px; }
+  p:last-child { margin-bottom:0; }
+
+  .drag {
+    background:var(--surface); border:1px solid var(--rule); border-radius:12px;
+    padding:26px 26px 24px; display:flex; flex-direction:column; gap:14px; align-items:flex-start;
+  }
+  .chip {
+    display:inline-flex; align-items:center; gap:9px;
+    background:var(--chip); color:var(--chip-ink); text-decoration:none;
+    font-family:var(--sans); font-weight:600; font-size:15px;
+    padding:11px 20px; border-radius:8px; cursor:grab;
+  }
+  .chip:active { cursor:grabbing; }
+  .chip:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .chip svg { width:15px; height:15px; }
+  .drag small { font-family:var(--sans); font-size:13.5px; color:var(--muted); }
+
+  ol { margin:0; padding:0; list-style:none; counter-reset:step; display:flex; flex-direction:column; gap:20px; }
+  /* The number is positioned, not a grid column. A grid item would make every <kbd> and
+     <strong> inside the step its own cell, breaking each one onto its own line. */
+  ol li { counter-increment:step; position:relative; padding-left:46px; min-height:30px; }
+  ol li::before {
+    content:counter(step); font-family:var(--mono); font-size:12.5px; font-weight:500;
+    color:var(--accent); background:var(--accent-soft);
+    position:absolute; left:0; top:0;
+    width:30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  kbd {
+    font-family:var(--mono); font-size:.86em; background:var(--accent-soft);
+    color:var(--ink); padding:2px 6px; border-radius:4px; border:1px solid var(--rule);
+  }
+
+  .platform { font-family:var(--sans); font-size:14px; color:var(--muted); margin:-6px 0 22px; }
+
+  .facts { display:flex; flex-direction:column; gap:0; border-top:1px solid var(--rule); }
+  .fact { display:grid; grid-template-columns:132px 1fr; gap:18px; padding:13px 0; border-bottom:1px solid var(--rule); }
+  .fact dt { font-family:var(--sans); font-size:13px; font-weight:500; color:var(--muted); }
+  .fact dd { margin:0; font-size:16px; }
+
+  .caution {
+    background:var(--caution-soft); border-left:3px solid var(--caution);
+    padding:18px 22px; border-radius:0 8px 8px 0;
+  }
+  .caution strong { font-family:var(--sans); font-size:13px; font-weight:600; color:var(--caution);
+    letter-spacing:.06em; text-transform:uppercase; display:block; margin-bottom:7px; }
+  .caution p { font-size:16px; }
+
+  .readout {
+    font-family:var(--mono); font-size:13.5px; line-height:1.75;
+    background:var(--surface); border:1px solid var(--rule); border-radius:10px;
+    padding:18px 20px; overflow-x:auto; white-space:pre; color:var(--ink);
+  }
+  .readout .hi { color:var(--accent); }
+</style>
+
+<div class="page">
+
+  <!-- Headline and one-line explanation of what the student is about to do. -->
+  <header>
+    <p class="eyebrow">Dexcom Clarity &middot; <span class="asis">macOS</span> version</p>
+    <h1>Get your Dexcom history in one click</h1>
+    <p class="lede">Dexcom Clarity limits you export to three months of glucose history at a time. This bookmark snippet will automate the process for you, collecting all of your data back to your first record.  The .csv file will be saved in your Downloads folder.</p>
+  </header>
+
+  <!-- Privacy note. Deliberately near the top: a student is being asked to run
+       something against their own medical account and deserves the answer early. -->
+  <section class="caution">
+    <strong>Your Data Stays Private</strong>
+    <p>This runs entirely in your own browser, using the Clarity login you&rsquo;re already signed in with. It sends nothing anywhere, saves nothing online, and changes nothing in your Clarity account. It asks Clarity for your own exports, stitches them into one file and hands it to you.</p>
+  </section>
+
+
+  <!-- Numbered instructions. Login comes first so the student is signed in
+         before the bookmark is ever clicked. -->
+      <section>
+    <h2>What to do</h2>
+
+<p class="platform">These steps are written for <strong>macOS</strong>.</p>
+
+    <ol>
+      <li>In a <strong>new tab</strong>, go to <strong>clarity.dexcom.com</strong> and log in the way you normally would, until you can see your own glucose data. Leave this page open &mdash; you come back to it in a moment.</li>
+      <li>Show your bookmarks bar if it&rsquo;s hidden &mdash; <kbd>&#8984;</kbd> <kbd>&#8679;</kbd> <kbd>B</kbd> in most browsers, or View &rsaquo; Always Show Bookmarks Bar.</li>
+      <li>Drag the <strong>Get My Clarity History</strong> button below onto the Bookmarks bar.</li>
+      <!-- The button itself. It is a link the student DRAGS rather than clicks;
+           clicking it here is harmless and does nothing (see the onclick). -->
+      <section class="drag">
+        <!-- GENERATED — the encoded tool. Source of truth: src/get-history.js -->
+          <a class="chip" href="javascript:%28async%28%29%3D%3E%7Bconst%20W%3Dwindow%3Bconst%20JWT%3D%2FeyJ%5BA-Za-z0-9_-%5D%2B%5C.%5BA-Za-z0-9_-%5D%2B%5C.%5BA-Za-z0-9_-%5D%2B%2F%3B%0Aconst%20WIN%3D90%2CSEAM%3D2%2CMAX%3D40%2CGAP%3D1200%2CDAY%3D864e5%3B%0A%2F%2F%20How%20many%20empty%2090-day%20stretches%20in%20a%20row%20before%20we%20accept%20the%20record%20has%20ended.%0A%2F%2F%20Four%20%3D%20a%20year%20of%20silence%2C%20so%20a%20gap%20shorter%20than%20that%20is%20stepped%20over%2C%20not%20stopped%20at.%0Aconst%20DRY_LIMIT%3D4%3B%0Avar%20box%2Cbody%3B%0Aconst%20ui%3D%28%29%3D%3E%7Bconst%20o%3Ddocument.getElementById%28%22fd-hist%22%29%3Bif%28o%29o.remove%28%29%3Bbox%3Ddocument.createElement%28%22div%22%29%3Bbox.id%3D%22fd-hist%22%3B%0Abox.setAttribute%28%22style%22%2C%27position%3Afixed%3Bright%3A16px%3Bbottom%3A16px%3Bz-index%3A2147483647%3Bwidth%3Amin%28560px%2C92vw%29%3Bmax-height%3A74vh%3Boverflow%3Aauto%3Bbackground%3A%230d1114%3Bcolor%3A%23e9eef2%3Bfont%3A13px%2F1.65%20ui-monospace%2CSFMono-Regular%2CMenlo%2Cmonospace%3Bpadding%3A16px%2018px%3Bborder-radius%3A10px%3Bbox-shadow%3A0%2012px%2040px%20rgba%280%2C0%2C0%2C.45%29%3Bwhite-space%3Apre-wrap%3Bword-break%3Abreak-word%3Buser-select%3Atext%27%29%3B%0Aconst%20x%3Ddocument.createElement%28%22button%22%29%3Bx.textContent%3D%22close%22%3Bx.setAttribute%28%22style%22%2C%22float%3Aright%3Bmargin%3A-4px%20-6px%208px%2012px%3Bbackground%3A%2325303a%3Bcolor%3A%23e9eef2%3Bborder%3A0%3Bborder-radius%3A5px%3Bpadding%3A4px%2010px%3Bfont%3Ainherit%3Bcursor%3Apointer%22%29%3Bx.onclick%3D%28%29%3D%3Ebox.remove%28%29%3B%0Abox.appendChild%28x%29%3Bbody%3Ddocument.createElement%28%22span%22%29%3Bbox.appendChild%28body%29%3Bdocument.body.appendChild%28box%29%7D%3B%0Aconst%20lines%3D%5B%5D%3Bconst%20say%3Dt%3D%3E%7Blines.push%28t%29%3Bbody.textContent%3Dlines.join%28%22%5Cn%22%29%3Bbox.scrollTop%3Dbox.scrollHeight%7D%3B%0Aconst%20sleep%3Dms%3D%3Enew%20Promise%28r%3D%3EsetTimeout%28r%2Cms%29%29%3B%0Aconst%20pad%3Dn%3D%3EString%28n%29.padStart%282%2C%220%22%29%3B%0Aconst%20ymd%3Dd%3D%3Ed.getFullYear%28%29%2B%22-%22%2Bpad%28d.getMonth%28%29%2B1%29%2B%22-%22%2Bpad%28d.getDate%28%29%29%3B%0Aconst%20cut%3D%28t%29%3D%3E%7Bif%28t.charCodeAt%280%29%3D%3D%3D0xfeff%29t%3Dt.slice%281%29%3Bconst%20rows%3D%5B%5D%3Blet%20row%3D%5B%5D%2Cf%3D%22%22%2Cq%3Dfalse%3B%0A%20for%28let%20i%3D0%3Bi%3Ct.length%3Bi%2B%2B%29%7Bconst%20c%3Dt%5Bi%5D%3B%0A%20%20if%28q%29%7Bif%28c%3D%3D%3D%27%22%27%29%7Bif%28t%5Bi%2B1%5D%3D%3D%3D%27%22%27%29%7Bf%2B%3D%27%22%27%3Bi%2B%2B%7Delse%20q%3Dfalse%7Delse%20f%2B%3Dc%3Bcontinue%7D%0A%20%20if%28c%3D%3D%3D%27%22%27%29q%3Dtrue%3Belse%20if%28c%3D%3D%3D%22%2C%22%29%20%20%7Brow.push%28f%29%3Bf%3D%22%22%7D%0A%20%20else%20if%28c%3D%3D%3D%22%5Cr%22%29%7B%7Delse%20if%28c%3D%3D%3D%22%5Cn%22%29%7Brow.push%28f%29%3Brows.push%28row%29%3Brow%3D%5B%5D%3Bf%3D%22%22%7Delse%20f%2B%3Dc%7D%0A%20if%28f.length%7C%7Crow.length%29%7Brow.push%28f%29%3Brows.push%28row%29%7Dreturn%20rows%7D%3B%0Aconst%20esc%3Dv%3D%3E%27%22%27%2BString%28v%3D%3Dnull%3F%22%22%3Av%29.replace%28%2F%22%2Fg%2C%27%22%22%27%29%2B%27%22%27%3B%0Aui%28%29%3B%0Atry%7B%0A%20const%20look%3Ds%3D%3E%7Btry%7Bfor%28let%20i%3D0%3Bi%3Cs.length%3Bi%2B%2B%29%7Bconst%20m%3D%28s.getItem%28s.key%28i%29%29%7C%7C%22%22%29.match%28JWT%29%3Bif%28m%29return%20m%5B0%5D%7D%7Dcatch%28e%29%7B%7Dreturn%20null%7D%3B%0A%20const%20token%3Dlook%28localStorage%29%7C%7Clook%28sessionStorage%29%7C%7C%28document.cookie.match%28JWT%29%7C%7C%5B%5D%29%5B0%5D%7C%7Cnull%3B%0A%20if%28%21token%29%7Bsay%28%22Couldn%27t%20find%20your%20Clarity%20login%20on%20this%20page.%22%29%3Bsay%28%22%22%29%3Bsay%28%22Make%20sure%20you%20are%20on%20clarity.dexcom.com%20and%20can%20see%20your%20own%22%29%3Bsay%28%22data%2C%20then%20click%20the%20bookmark%20again.%22%29%3Breturn%7D%0A%20let%20pay%3D%7B%7D%3Btry%7Bpay%3DJSON.parse%28atob%28token.split%28%22.%22%29%5B1%5D.replace%28%2F-%2Fg%2C%22%2B%22%29.replace%28%2F_%2Fg%2C%22%2F%22%29%29%29%7Dcatch%28e%29%7B%7D%0A%20const%20subj%3Dpay.subjectId%7C%7Cpay.subject_id%3B%0A%20const%20first%3Dpay.given_name%7C%7Cpay.firstName%7C%7C%22%22%3B%0A%20const%20last%3Dpay.family_name%7C%7Cpay.lastName%7C%7C%22%22%3B%0A%20if%28%21subj%29%7Bsay%28%22Found%20your%20login%2C%20but%20not%20your%20subject%20number.%22%29%3Bsay%28%22%22%29%3Bsay%28%22Copy%20this%20line%20and%20ask%20for%20help%3A%22%29%3Bsay%28%22%20%20%22%2BObject.keys%28pay%29.join%28%22%2C%20%22%29%29%3Breturn%7D%0A%20const%20txt%3D%28document.body.innerText%7C%7C%22%22%29%3B%0A%20const%20units%3D%28%2Fmmol%5C%2FL%2Fi.test%28txt%29%26%26%21%2Fmg%5C%2FdL%2Fi.test%28txt%29%29%3F%22mmol%22%3A%22mgdl%22%3B%0A%20%2F%2F%20Clarity%27s%20timestamps%20carry%20no%20timezone%2C%20so%20the%20file%20is%20only%20readable%20if%20it%20also%0A%20%2F%2F%20says%20which%20zone%20it%20was%20recorded%20in.%20The%20browser%20knows%20this%20for%20certain%3B%20nothing%0A%20%2F%2F%20downstream%20does.%20Named%20zone%2C%20not%20an%20offset%2C%20so%20daylight-saving%20rules%20travel%20too.%0A%20let%20tz%3D%22%22%3Btry%7Btz%3DIntl.DateTimeFormat%28%29.resolvedOptions%28%29.timeZone%7C%7C%22%22%7Dcatch%28e%29%7B%7D%0A%20const%20now%3Dnew%20Date%28%29%3B%0A%20say%28%22Collecting%20your%20Clarity%20history.%22%29%3B%0A%20say%28%22Units%20%22%2B%28units%3D%3D%3D%22mmol%22%3F%22mmol%2FL%22%3A%22mg%2FdL%22%29%2B%22%2C%20times%20%22%2B%28tz%7C%7C%22unknown%20zone%22%29%2B%22.%22%29%3B%0A%20say%28%22This%20takes%20a%20few%20seconds%20per%20step.%22%29%3B%0A%20say%28%22%22%29%3B%0A%20let%20anchor%3Dnew%20Date%28now.getTime%28%29%29%2Cheader%3Dnull%2Cseen%3Dnew%20Set%28%29%2Ckeep%3D%5B%5D%2Cmeta%3D%5B%5D%2Cwindows%3D0%2Cdry%3D0%2Creason%3D%22%22%3B%0A%20for%28windows%3D1%3Bwindows%3C%3DMAX%3Bwindows%2B%2B%29%7B%0A%20%20const%20start%3Dnew%20Date%28anchor.getTime%28%29-WIN%2ADAY%29%3B%0A%20%20let%20end%3Dnew%20Date%28anchor.getTime%28%29%2BSEAM%2ADAY%29%3Bif%28end%3Enow%29end%3Dnow%3B%0A%20%20const%20a%3Dymd%28start%29%2Cb%3Dymd%28end%29%3B%0A%20%20const%20form%3Dnew%20URLSearchParams%28%7Blocale%3A%22en-US%22%2Cunits%3Aunits%2CdateInterval%3Aa%2B%22%2F%22%2Bb%2CaccessToken%3Atoken%2CsubmitExport%3A%22Export%22%2CfirstName%3Afirst%2ClastName%3Alast%7D%29%3B%0A%20%20const%20r%3Dawait%20fetch%28%22%2Fapi%2Fsubject%2F%22%2Bsubj%2B%22%2Fexport%22%2C%7Bmethod%3A%22POST%22%2Ccredentials%3A%22include%22%2Cheaders%3A%7B%22Content-Type%22%3A%22application%2Fx-www-form-urlencoded%22%7D%2Cbody%3Aform%7D%29%3B%0A%20%20if%28%21r.ok%29%7Bsay%28%22%20%20%22%2Ba%2B%22%20to%20%22%2Bb%2B%22%20-%20Clarity%20said%20no%20%28HTTP%20%22%2Br.status%2B%22%29%22%29%3Breason%3Dr.status%3D%3D%3D401%7C%7Cr.status%3D%3D%3D403%3F%22your%20Clarity%20login%20timed%20out%20partway%20-%20log%20in%20again%20and%20re-click%22%3A%22Clarity%20refused%20that%20request%22%3Bbreak%7D%0A%20%20const%20rows%3Dcut%28await%20r.text%28%29%29%3B%0A%20%20if%28%21header%26%26rows.length%29header%3Drows%5B0%5D%3B%0A%20%20let%20got%3D0%2Coldest%3Dnull%3B%0A%20%20for%28let%20i%3D1%3Bi%3Crows.length%3Bi%2B%2B%29%7Bconst%20row%3Drows%5Bi%5D%3Bif%28%21row%7C%7Crow.length%3C3%29continue%3B%0A%20%20%20const%20ts%3D%28row%5B1%5D%7C%7C%22%22%29.trim%28%29%2Ctype%3D%28row%5B2%5D%7C%7C%22%22%29.trim%28%29%3B%0A%20%20%20const%20key%3DJSON.stringify%28row.slice%281%29%29%3B%0A%20%20%20if%28%21ts%29%7Bif%28%21seen.has%28key%29%29%7Bseen.add%28key%29%3Bmeta.push%28row%29%7Dcontinue%7D%0A%20%20%20if%28seen.has%28key%29%29continue%3Bseen.add%28key%29%3Bkeep.push%28row%29%3B%0A%20%20%20if%28type%3D%3D%3D%22EGV%22%29%7Bgot%2B%2B%3Bif%28%21oldest%7C%7Cts%3Coldest%29oldest%3Dts%7D%7D%0A%20%20%2F%2F%20Anything%20older%20to%20move%20to%3F%20If%20a%20stretch%20brings%20back%20nothing%20new%2C%20that%20is%20NOT%20proof%0A%20%20%2F%2F%20the%20record%20has%20ended%20-%20a%20spell%20without%20a%20sensor%20looks%20exactly%20the%20same.%20So%20step%20back%0A%20%20%2F%2F%20a%20whole%20stretch%20and%20keep%20looking%2C%20and%20only%20call%20it%20the%20end%20after%20DRY_LIMIT%20empty%20ones%0A%20%20%2F%2F%20in%20a%20row.%20At%2090%20days%20each%20that%20is%20a%20full%20year%20of%20silence%20before%20we%20give%20up%2C%20which%0A%20%20%2F%2F%20steps%20straight%20over%20any%20realistic%20gap.%0A%20%20const%20od%3Doldest%3Fnew%20Date%28oldest%29%3Anull%3B%0A%20%20if%28got%3E0%26%26od%26%26od%3Canchor%29%7B%0A%20%20%20dry%3D0%3Banchor%3Dod%3B%0A%20%20%20say%28%22%20%20%22%2Ba%2B%22%20to%20%22%2Bb%2B%22%20%20%20%22%2BString%28got%29.padStart%285%29%2B%22%20new%20readings%22%29%3B%0A%20%20%7Delse%7B%0A%20%20%20dry%2B%2B%3Banchor%3Dstart%3B%0A%20%20%20say%28%22%20%20%22%2Ba%2B%22%20to%20%22%2Bb%2B%22%20%20%20%20%20%20%20nothing%20here%22%2B%28dry%3CDRY_LIMIT%3F%22%2C%20looking%20further%20back%22%3A%22%22%29%29%3B%0A%20%20%20if%28dry%3E%3DDRY_LIMIT%29%7Breason%3D%22that%20is%20as%20far%20back%20as%20your%20record%20goes%22%3Bbreak%7D%0A%20%20%7D%0A%20%20await%20sleep%28GAP%29%7D%0A%20if%28%21reason%29reason%3D%22stopped%20at%20the%20%22%2BMAX%2B%22-step%20safety%20limit%20-%20click%20the%20bookmark%20again%20to%20keep%20going%22%3B%0A%20const%20stamped%3Dkeep.filter%28r%3D%3E%28r%5B1%5D%7C%7C%22%22%29.trim%28%29%29.sort%28%28x%2Cy%29%3D%3E%28x%5B1%5D%3Cy%5B1%5D%3F-1%3Ax%5B1%5D%3Ey%5B1%5D%3F1%3A0%29%29%3B%0A%20say%28%22%22%29%3B%0A%20if%28%21stamped.length%29%7Bsay%28%22Nothing%20came%20back.%20This%20walk%20starts%20at%20today%2C%20so%20a%20record%20whose%22%29%3Bsay%28%22newest%20reading%20is%20over%20%22%2BWIN%2B%22%20days%20old%20looks%20the%20same%20as%20an%20empty%20one.%22%29%3Breturn%7D%0A%20const%20out%3D%5Bheader.map%28esc%29.join%28%22%2C%22%29%5D%3Blet%20n%3D0%3B%0A%20%2F%2F%20Rides%20along%20as%20one%20more%20untimed%20metadata%20row%2C%20the%20same%20shape%20Clarity%20already%20uses%0A%20%2F%2F%20for%20FirstName%20%2F%20Device.%20Importers%20that%20don%27t%20know%20about%20it%20skip%20it%20as%20they%20always%0A%20%2F%2F%20have%3B%20the%20one%20that%20does%20reads%20the%20zone%20off%20it%20and%20converts%20correctly%20anywhere.%0A%20const%20tzRow%3Dnew%20Array%28header.length%29.fill%28%22%22%29%3BtzRow%5B2%5D%3D%22Timezone%22%3BtzRow%5B3%5D%3Dtz%3B%0A%20%5BtzRow%5D.concat%28meta%2Cstamped%29.forEach%28row%3D%3E%7Bconst%20c%3Drow.slice%28%29%3Bc%5B0%5D%3DString%28%2B%2Bn%29%3Bout.push%28c.map%28esc%29.join%28%22%2C%22%29%29%7D%29%3B%0A%20const%20blob%3Dnew%20Blob%28%5Bout.join%28%22%5Cr%5Cn%22%29%2B%22%5Cr%5Cn%22%5D%2C%7Btype%3A%22text%2Fcsv%22%7D%29%3B%0A%20const%20url%3DURL.createObjectURL%28blob%29%3Bconst%20a%3Ddocument.createElement%28%22a%22%29%3B%0A%20const%20fname%3D%22clarity-history-%22%2Bymd%28now%29%2B%28tz%3F%22-%22%2Btz.replace%28%2F%5C%2F%2Fg%2C%22-%22%29%3A%22%22%29%2B%22.csv%22%3B%0A%20a.href%3Durl%3Ba.download%3Dfname%3Bdocument.body.appendChild%28a%29%3Ba.click%28%29%3B%0A%20setTimeout%28%28%29%3D%3E%7BURL.revokeObjectURL%28url%29%3Ba.remove%28%29%7D%2C4000%29%3B%0A%20const%20days%3DMath.round%28%28new%20Date%28stamped%5Bstamped.length-1%5D%5B1%5D%29-new%20Date%28stamped%5B0%5D%5B1%5D%29%29%2FDAY%29%3B%0A%20say%28%22Done%20-%20%22%2Breason%2B%22.%22%29%3B%0A%20say%28%22%22%29%3B%0A%20say%28%22%20%20%22%2Bstamped.length%2B%22%20rows%2C%20covering%20%22%2Bdays%2B%22%20days%22%29%3B%0A%20say%28%22%20%20%22%2Bstamped%5B0%5D%5B1%5D.slice%280%2C10%29%2B%22%20%20to%20%20%22%2Bstamped%5Bstamped.length-1%5D%5B1%5D.slice%280%2C10%29%29%3B%0A%20say%28%22%22%29%3B%0A%20say%28%22Saved%20to%20your%20Downloads%20folder%20as%22%29%3B%0A%20say%28%22%20%20%22%2Bfname%29%3B%0A%20if%28%21tz%29%7Bsay%28%22%22%29%3Bsay%28%22Your%20browser%20wouldn%27t%20tell%20me%20your%20timezone%2C%20so%20the%20file%20doesn%27t%22%29%3Bsay%28%22record%20which%20one%20these%20times%20are%20on.%20They%20are%20your%20own%20local%20times.%22%29%7D%0A%7Dcatch%28e%29%7Bsay%28%22%22%29%3Bsay%28%22Something%20went%20wrong%3A%20%22%2B%28e%26%26e.message%3Fe.message%3Ae%29%29%3Bsay%28%22%22%29%3Bsay%28%22Copy%20that%20line%20and%20ask%20for%20help.%22%29%7D%0A%7D%29%28%29" onclick="return false;">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7M3 12v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1"/></svg>
+          Get My Clarity History
+        </a>
+        <small>Drag this onto your bookmarks bar. Clicking it here does nothing &mdash; it only works once you&rsquo;re on Clarity.</small>
+      </section>
+      
+      <li>Click <strong>Get My Clarity History</strong> on the bookmarks bar.</li>
+      <li>Watch it work. It counts out each three-month stretch as it goes, and stops on its own when it reaches the beginning of your record.</li>
+      <li>Your file lands in <strong>Downloads</strong>, named for today&rsquo;s date and time zone. </li>
+    </ol>
+  </section>
+
+  <!-- A sample of the panel the bookmark shows while it runs, so nothing the
+         student sees is a surprise. -->
+      <section>
+    <h2>A sample of What you might see</h2>
+    <div class="readout">Collecting your Clarity history.
+Units mg/dL, times America/Chicago.
+This takes a few seconds per step.
+
+  2026-05-27 to 2026-08-25    <span class="hi">7834</span> new readings
+  2026-02-25 to 2026-05-29    <span class="hi">7712</span> new readings
+  2025-11-27 to 2026-02-27    <span class="hi">6180</span> new readings
+  2025-11-08 to 2026-02-08       <span class="hi">0</span> new readings
+
+Done - that is as far back as your record goes.
+
+  <span class="hi">21726</span> rows, covering <span class="hi">274</span> days
+  2025-11-24  to  2026-08-25
+
+Saved to your Downloads folder as
+  clarity-history-2026-08-25-America-Chicago.csv</div>
+  </section>
+
+  <!-- Answers to what goes wrong or looks odd, in the order students hit them. -->
+      <section>
+    <h2>Worth knowing</h2>
+    <dl class="facts">
+      <div class="fact"><dt>How long</dt><dd>A few seconds per three-month stretch, so under a minute for most people. Leave the tab alone while it runs.</dd></div>
+      <div class="fact"><dt>Run it twice?</dt><dd>Harmless. You&rsquo;ll get a second file, no different from the first. Nothing in your Clarity account changes either way.</dd></div>
+      <div class="fact"><dt>If it stops early</dt><dd>A few months without a sensor won&rsquo;t stop it &mdash; it steps over the gap and keeps going. It only stops once it finds a whole year with nothing in it. The dates in the panel show you what you got.</dd></div>
+      <div class="fact"><dt>Nothing at all?</dt><dd>If nothing comes back at all, this account has no Clarity data in the past year. The panel tells you that instead of saving you an empty file.</dd></div>
+          <div class="fact"><dt>The times in it</dt><dd>The times in your file are the times you saw on your own phone. Your timezone is added to the filename, so it stays clear later which clock they came from.</dd></div>
+</dl>
+  </section>
+
+
+
+</div>
