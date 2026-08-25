@@ -30,34 +30,32 @@
 <title>Clarity History Grab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
-<!-- ── Look and feel. Colours are defined once as variables, then re-defined
-     for dark mode, so the page reads correctly in either. ── -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600&display=swap">
+<!-- ── Look and feel. The Fiercely Diabetic palette, defined once as variables.
+     One light scheme only: the brand has no dark variant, and every site page
+     is deep purple on cream. ── -->
 <style>
   :root {
-    --ground:#F7F9FA; --surface:#FFFFFF; --ink:#0E1417; --muted:#5C6B75;
-    --rule:#DCE3E8; --accent:#0B6E62; --accent-soft:#E4F1EE;
-    --caution:#7A5200; --caution-soft:#FBF2DE; --chip:#0E1417; --chip-ink:#FFFFFF;
-    --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
-    --serif:"Source Serif 4",Georgia,serif;
-    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  }
-  @media (prefers-color-scheme:dark) {
-    :root:not([data-theme="light"]) {
-      --ground:#0C1013; --surface:#141A1F; --ink:#E7EDF1; --muted:#93A3AE;
-      --rule:#232C33; --accent:#46C4B2; --accent-soft:#14262A;
-      --caution:#D9A441; --caution-soft:#241E10; --chip:#E7EDF1; --chip-ink:#0C1013;
-    }
-  }
-  :root[data-theme="dark"] {
-    --ground:#0C1013; --surface:#141A1F; --ink:#E7EDF1; --muted:#93A3AE;
-    --rule:#232C33; --accent:#46C4B2; --accent-soft:#14262A;
-    --caution:#D9A441; --caution-soft:#241E10; --chip:#E7EDF1; --chip-ink:#0C1013;
+    --deep-purple:#342858;
+    --hot-pink:#8E3165;
+    --warm-orange:#DB6554;
+    --cream:#F9F5F0;
+    --cream2:#EDE8E1;
+    --white:#ffffff;
+    --text:#342858;
+    --muted:#6b5f80;
+    --border:#D4CEC5;
+    --medium-gray:#888780;
+    --radius:12px;
+    --shadow:0 2px 12px rgba(52,40,88,0.08);
+    --sans:"DM Sans",system-ui,-apple-system,sans-serif;
+    --display:"Playfair Display",Georgia,serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
 
   body {
-    background:var(--ground); color:var(--ink);
-    font-family:var(--serif); font-size:17px; line-height:1.65;
+    background:var(--cream); color:var(--text);
+    font-family:var(--sans); font-size:17px; line-height:1.65;
     margin:0; padding:56px 24px 96px;
   }
   .page { max-width:660px; margin:0 auto; display:flex; flex-direction:column; gap:38px; }
@@ -67,34 +65,38 @@
 
   .eyebrow {
     font-family:var(--sans); font-size:11.5px; font-weight:600;
-    letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 10px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--hot-pink); margin:0 0 10px;
   }
   h1 {
-    font-family:var(--sans); font-weight:600; font-size:34px; line-height:1.15;
-    letter-spacing:-.018em; margin:0 0 14px; text-wrap:balance;
+    font-family:var(--display); font-weight:700; font-size:38px; line-height:1.15;
+    letter-spacing:-.01em; color:var(--deep-purple); margin:0 0 14px; text-wrap:balance;
   }
   .lede { margin:0; color:var(--muted); font-size:18px; }
 
   h2 {
-    font-family:var(--sans); font-size:12px; font-weight:600; letter-spacing:.13em;
+    font-family:var(--sans); font-size:12px; font-weight:600; letter-spacing:.1em;
     text-transform:uppercase; color:var(--muted); margin:0 0 18px;
-    padding-bottom:9px; border-bottom:1px solid var(--rule);
+    padding-bottom:9px; border-bottom:1px solid var(--border);
   }
   p { margin:0 0 14px; }
   p:last-child { margin-bottom:0; }
 
   .drag {
-    background:var(--surface); border:1px solid var(--rule); border-radius:12px;
+    background:var(--white); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow);
     padding:26px 26px 24px; display:flex; flex-direction:column; gap:14px; align-items:flex-start;
   }
+  /* Primary button, per the brand: hot pink, white label, darker pink on hover. */
   .chip {
     display:inline-flex; align-items:center; gap:9px;
-    background:var(--chip); color:var(--chip-ink); text-decoration:none;
+    background:var(--hot-pink); color:var(--white); text-decoration:none;
     font-family:var(--sans); font-weight:600; font-size:15px;
     padding:11px 20px; border-radius:8px; cursor:grab;
+    transition:background .2s ease;
   }
+  .chip:hover { background:#7a2956; }
   .chip:active { cursor:grabbing; }
-  .chip:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .chip:focus-visible { outline:2px solid var(--warm-orange); outline-offset:3px; }
   .chip svg { width:15px; height:15px; }
   .drag small { font-family:var(--sans); font-size:13.5px; color:var(--muted); }
 
@@ -103,38 +105,39 @@
      <strong> inside the step its own cell, breaking each one onto its own line. */
   ol li { counter-increment:step; position:relative; padding-left:46px; min-height:30px; }
   ol li::before {
-    content:counter(step); font-family:var(--mono); font-size:12.5px; font-weight:500;
-    color:var(--accent); background:var(--accent-soft);
+    content:counter(step); font-family:var(--sans); font-size:12.5px; font-weight:600;
+    color:var(--hot-pink); background:var(--cream2);
     position:absolute; left:0; top:0;
     width:30px; height:30px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
   }
   kbd {
-    font-family:var(--mono); font-size:.86em; background:var(--accent-soft);
-    color:var(--ink); padding:2px 6px; border-radius:4px; border:1px solid var(--rule);
+    font-family:var(--mono); font-size:.86em; background:var(--cream2);
+    color:var(--deep-purple); padding:2px 6px; border-radius:4px; border:1px solid var(--border);
   }
 
   .platform { font-family:var(--sans); font-size:14px; color:var(--muted); margin:-6px 0 22px; }
 
-  .facts { display:flex; flex-direction:column; gap:0; border-top:1px solid var(--rule); }
-  .fact { display:grid; grid-template-columns:132px 1fr; gap:18px; padding:13px 0; border-bottom:1px solid var(--rule); }
+  .facts { display:flex; flex-direction:column; gap:0; border-top:1px solid var(--border); }
+  .fact { display:grid; grid-template-columns:132px 1fr; gap:18px; padding:13px 0; border-bottom:1px solid var(--border); }
   .fact dt { font-family:var(--sans); font-size:13px; font-weight:500; color:var(--muted); }
   .fact dd { margin:0; font-size:16px; }
 
+  /* Callout, per the brand: warm-orange left rule on white, squared off on that side. */
   .caution {
-    background:var(--caution-soft); border-left:3px solid var(--caution);
-    padding:18px 22px; border-radius:0 8px 8px 0;
+    background:var(--white); border-left:3px solid var(--warm-orange);
+    padding:20px 24px; border-radius:0 8px 8px 0;
   }
-  .caution strong { font-family:var(--sans); font-size:13px; font-weight:600; color:var(--caution);
+  .caution strong { font-family:var(--sans); font-size:13px; font-weight:600; color:var(--warm-orange);
     letter-spacing:.06em; text-transform:uppercase; display:block; margin-bottom:7px; }
-  .caution p { font-size:16px; }
+  .caution p { font-size:16px; color:var(--text); }
 
   .readout {
     font-family:var(--mono); font-size:13.5px; line-height:1.75;
-    background:var(--surface); border:1px solid var(--rule); border-radius:10px;
-    padding:18px 20px; overflow-x:auto; white-space:pre; color:var(--ink);
+    background:var(--white); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 20px; overflow-x:auto; white-space:pre; color:var(--text);
   }
-  .readout .hi { color:var(--accent); }
+  .readout .hi { color:var(--hot-pink); font-weight:600; }
 </style>
 
 <div class="page">
@@ -143,7 +146,7 @@
   <header>
     <p class="eyebrow">Dexcom Clarity &middot; <span class="asis">macOS</span> version</p>
     <h1>Get your Dexcom history in one click</h1>
-    <p class="lede">Dexcom Clarity limits you export to three months of glucose history at a time. This bookmark snippet will automate the process for you, collecting all of your data back to your first record.  The .csv file will be saved in your Downloads folder.</p>
+    <p class="lede">Dexcom Clarity limits your export to three months of glucose history at a time. This bookmark snippet will automate the process for you, collecting all of your data back to your first record.  The .csv file will be saved in your Downloads folder.</p>
   </header>
 
   <!-- Privacy note. Deliberately near the top: a student is being asked to run
