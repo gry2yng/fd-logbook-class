@@ -132,6 +132,18 @@
     letter-spacing:.06em; text-transform:uppercase; display:block; margin-bottom:7px; }
   .caution p { font-size:16px; color:var(--text); }
 
+  .masthead {
+    font-family:var(--sans); font-size:15px; font-weight:600; color:var(--ink);
+    letter-spacing:-.01em; padding-bottom:20px; border-bottom:1px solid var(--rule);
+  }
+
+  footer {
+    margin-top:10px; padding-top:22px; border-top:1px solid var(--rule);
+    display:flex; flex-wrap:wrap; gap:6px 18px; align-items:baseline;
+    font-family:var(--sans); font-size:13px; color:var(--muted);
+  }
+  footer .brand { font-weight:600; color:var(--ink); letter-spacing:-.005em; }
+
   .readout {
     font-family:var(--mono); font-size:13.5px; line-height:1.75;
     background:var(--white); border:1px solid var(--border); border-radius:var(--radius);
@@ -141,6 +153,10 @@
 </style>
 
 <div class="page">
+
+  <!-- Masthead. -->
+  <div class="masthead">Fiercely Diabetic</div>
+
 
   <!-- Headline and one-line explanation of what the student is about to do. -->
   <header>
@@ -220,5 +236,11 @@ Saved to your Downloads folder as
   </section>
 
 
+
+  <!-- Attribution and copyright. -->
+  <footer>
+    <span class="brand">Fiercely Diabetic</span>
+    <span>&copy; 2026 Fiercely Diabetic. All rights reserved.</span>
+  </footer>
 
 </div>
